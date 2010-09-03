@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Dashboard</title>
+  </head>
+  
+  <body>
+    BODY
+    
+    
+    <script type="text/javascript" charset="utf-8" src='http://yui.yahooapis.com/2.8.1/build/yuiloader/yuiloader-min.js'></script>
+    <script type="text/javascript" charset="utf-8">
+      new YAHOO.util.YUILoader({
+        require: ["connection","container","fonts","json","yahoo-dom-event",
+          "element"],
+        combine: true,
+        filer: "MIN",
+        onSuccess: function(){ app.initialize(); }
+      }).insert();
+      
+      var app = {
+        name:'dashboard',
+        version:0.1,
+      }
+      
+      app.initialize = function(){
+        console.log('app.initialize');
+        setInterval(app.poll,10000);
+        app.poll();
+      }
+      
+      app.poll = function(){
+        console.log('app.poll');
+        var callback = { success:app.handle_updates };
+        YAHOO.util.Connect.asyncRequest("GET",'/inboxes',callback);
+      }
+      
+      app.handle_updates = function(ev){
+        console.log('app.handle_updates');
+        console.log(ev);
+        var message = YAHOO.lang.JSON.parse(ev.responseText);
+        var body = new YAHOO.util.Element('body');
+        body.
+      }
+      
+    </script>
+  </body>
+</html>
