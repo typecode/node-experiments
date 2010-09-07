@@ -5,44 +5,52 @@
   </head>
   
   <body>
-    BODY
+    <pre id='updates'></pre>
     
-    
-    <script type="text/javascript" charset="utf-8" src='http://yui.yahooapis.com/2.8.1/build/yuiloader/yuiloader-min.js'></script>
+    <script type="text/javascript" charset="utf-8" src="http://yui.yahooapis.com/3.1.2/build/yui/yui-min.js"></script>
     <script type="text/javascript" charset="utf-8">
-      new YAHOO.util.YUILoader({
-        require: ["connection","container","fonts","json","yahoo-dom-event",
-          "element"],
-        combine: true,
-        filer: "MIN",
-        onSuccess: function(){ app.initialize(); }
-      }).insert();
       
       var app = {
+        YUI:null,
         name:'dashboard',
         version:0.1,
+        openPolls:{}
       }
       
-      app.initialize = function(){
+      app.initialize = function(Y){
         console.log('app.initialize');
-        setInterval(app.poll,10000);
+        app.YUI = Y;
         app.poll();
       }
       
       app.poll = function(){
         console.log('app.poll');
-        var callback = { success:app.handle_updates };
-        YAHOO.util.Connect.asyncRequest("GET",'/inboxes',callback);
+        var config = {
+          on:{
+            success:app.handle_updates,
+            end:app.poll
+          },
+          arguments:{
+            index:'/inboxes'
+          }
+        };
+        if(!app.openPolls['/inboxes']){
+          app.openPolls['/inboxes'] = app.YUI.io('/inboxes',config);
+        }
       }
       
-      app.handle_updates = function(ev){
+      app.handle_updates = function(transactionId, response, arguments){
         console.log('app.handle_updates');
-        console.log(ev);
-        var message = YAHOO.lang.JSON.parse(ev.responseText);
-        var body = new YAHOO.util.Element('body');
-        body.
+        if(app.openPolls[arguments.index]){
+          delete app.openPolls[arguments.index];
+        }
+        app.YUI.one('#updates').append(response.responseText+'<br />');
       }
       
+      YUI().use('io','json','node',function(Y){
+        app.initialize(Y);
+      });
+
     </script>
   </body>
 </html>

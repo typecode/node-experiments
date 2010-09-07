@@ -16,6 +16,7 @@ var app = {
   name:'dashboard',
   version:0.1,
   fetchers:[],
+  openPolls:[],
   option_settings:[
     {
       short       : 'a',
@@ -56,7 +57,7 @@ app.initialize = function(){
 
 app.setup_routes = function(){
   this.router.get('/').get('/index.html').bind(app.getIndex);
-  this.router.get('/inboxes').bind(app.getUpdates);
+  this.router.get('/inboxes').bind(app.getUpdatesLong);
   this.router.bind(app.unhandledRequest);
 }
 
@@ -92,12 +93,18 @@ app.getUpdates = function(req,res,next){
   res.end(JSON.stringify({'message':'UPDATES'}));
 }
 
+app.getUpdatesLong = function(req,res,next){
+  res.writeHead(200,{'Content-Type':'application/json'});
+  app.openPolls.push(res);
+}
+
 app.unhandledRequest = function(req,res,next){
   res.writeHead(404,{'Content-Type':'application/json'});
   res.end(JSON.stringify({'message':'Resource Not Found'}));
 }
 
 app.gmailReceived = function(data){
+  console.log('app.gmailReceived');
   var parser = new xml.Parser();
   parser.addListener('end', function(result) {
     var output = result.title+" ->";
@@ -106,6 +113,10 @@ app.gmailReceived = function(data){
       output = output + "#";
     }
     console.log(output);
+    while(app.openPolls.length){
+      var response = app.openPolls.shift();
+      response.end(JSON.stringify(result));
+    }
   });
   parser.parseString(data);
 }
