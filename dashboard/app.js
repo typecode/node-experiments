@@ -1,8 +1,11 @@
+require.paths.unshift(__dirname);
+
 var http = require('http'),
     sys = require('sys'),
     url = require('url'),
     path = require('path'),
     fs = require('fs'),
+    opts = require('./approot/libs/opts'),
     Router = require('./approot/libs/biggie-router'),
     string = require('./approot/libs/string'),
     sax = require('./approot/libs/sax'),
@@ -13,29 +16,48 @@ var app = {
   name:'dashboard',
   version:0.1,
   fetchers:[],
-  conf:[
-    {un:'amahon@gmail.com',pw:'4247prince51387',freq:30000},
-    {un:'andrew@typeslashcode.com',pw:'pentium',freq:30000},
-    {un:'andrew@wealthonesolutions.com',pw:'wealth123!',freq:30000}
-  ]
+  openPolls:[],
+  option_settings:[
+    {
+      short       : 'a',
+      long        : 'accounts',
+      description : 'Path to Accounts File',
+      value       : true
+    }
+  ],
+  accounts:null,
+  router:new Router()
 }
 
 app.initialize = function(){
-  for(var i in this.conf){
+  opts.parse(app.option_settings);
+  
+  try{
+    this.accounts = require(opts.get('accounts')).accounts;
+  }catch(error) {
+    console.log('Accounts File Not Found! Exiting.');
+    return false;
+  }
+  
+  if(!this.accounts){
+    console.log('No Accounts Loaded! Exiting.');
+    return false;
+  }
+  
+  for(var i in this.accounts){
     var _fetcher = new gmail.fetcher;
-    _fetcher.initialize(app.conf[i]);
+    _fetcher.initialize(app.accounts[i]);
     _fetcher.events.on('gmailReceived',this.gmailReceived);
     this.fetchers.push(_fetcher);
   }
   
-  this.router = new Router();
   this.router.listen(8123);
   this.setup_routes();
 }
 
 app.setup_routes = function(){
   this.router.get('/').get('/index.html').bind(app.getIndex);
-  this.router.get('/inboxes').bind(app.getUpdates);
+  this.router.get('/inboxes').bind(app.getUpdatesLong);
   this.router.bind(app.unhandledRequest);
 }
 
@@ -71,12 +93,18 @@ app.getUpdates = function(req,res,next){
   res.end(JSON.stringify({'message':'UPDATES'}));
 }
 
+app.getUpdatesLong = function(req,res,next){
+  res.writeHead(200,{'Content-Type':'application/json'});
+  app.openPolls.push(res);
+}
+
 app.unhandledRequest = function(req,res,next){
   res.writeHead(404,{'Content-Type':'application/json'});
   res.end(JSON.stringify({'message':'Resource Not Found'}));
 }
 
 app.gmailReceived = function(data){
+  console.log('app.gmailReceived');
   var parser = new xml.Parser();
   parser.addListener('end', function(result) {
     var output = result.title+" ->";
@@ -85,6 +113,10 @@ app.gmailReceived = function(data){
       output = output + "#";
     }
     console.log(output);
+    while(app.openPolls.length){
+      var response = app.openPolls.shift();
+      response.end(JSON.stringify(result));
+    }
   });
   parser.parseString(data);
 }
