@@ -14,7 +14,9 @@ var app = {
   version:0.1,
   fetchers:[],
   conf:[
-    {un:'',pw:'',freq:30000}
+    {un:'amahon@gmail.com',pw:'4247prince51387',freq:30000},
+    {un:'andrew@typeslashcode.com',pw:'pentium',freq:30000},
+    {un:'andrew@wealthonesolutions.com',pw:'wealth123!',freq:30000}
   ]
 }
 
