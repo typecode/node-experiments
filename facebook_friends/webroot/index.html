@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Dashboard</title>
+    <title>Facebook Friends</title>
+    
+    <style type="text/css" media="screen">
+      #fb_content { width:100%; height:100%; }
+    </style>
   </head>
   
   <body>
-    <div id='fb_auth'>
-      <a href='https://graph.facebook.com/oauth/authorize?client_id=161098813904458&redirect_uri=http://localhost:8123/fbauth_redirect'>login</a>
-    </div>
-    
-    
+    <pre id='fb_content'></pre>
+
     <script type="text/javascript" charset="utf-8" src="http://yui.yahooapis.com/3.1.2/build/yui/yui-min.js"></script>
     <script type="text/javascript" charset="utf-8">
       
@@ -30,7 +31,39 @@
         app.YUI.io('/user',
           {on:{
             success:function(transactionId, response, arguments){
-              console.log(response.responseText);
+              try{
+                var _json = app.YUI.JSON.parse(response.responseText);
+                if(_json.redirect){
+                  window.location = _json.redirect;
+                } else if(_json.user){
+                  app.user = _json.user;
+                  app.getgraphdata('/me');
+                  app.getgraphdata('/me/home');
+                  app.getgraphdata('/me/tagged');
+                  app.getgraphdata('/me/posts');
+                  app.getgraphdata('/me/friends');
+                }
+              }catch(error){
+                console.log(error);
+              }
+            }
+          }}
+        );
+      }
+      
+      app.getgraphdata = function(uri){
+        if(!uri){
+          return;
+        }
+        app.YUI.io('/user/graph'+uri,
+          {on:{
+            success:function(transactionId, response, arguments){
+              try{
+                var _json = app.YUI.JSON.parse(response.responseText);
+                app.YUI.one('#fb_content').append(app.YUI.JSON.stringify(_json,null,'&nbsp'));
+              }catch(error){
+                console.log(error);
+              }
             }
           }}
         );
