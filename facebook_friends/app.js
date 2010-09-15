@@ -7,19 +7,24 @@ var http = require('http'),
     fs = require('fs'),
     opts = require('./approot/libs/opts'),
     Router = require('./approot/libs/biggie-router'),
-    SessionManager = require('./approot/libs/sessionManager'),
+    SessionManager = require('./approot/libs/tc/sessionManager'),
+    Logging = require('./approot/libs/tc/logging'),
     string = require('./approot/libs/string'),
     sax = require('./approot/libs/sax'),
     xml = require('./approot/libs/xml2js'),
-    utils = require('./approot/libs/utils'),
+    utils = require('./approot/libs/tc/utils'),
     gmail = require('./approot/gmail'),
     FBInterface = require('./approot/facebook');
 
+var logging = new Logging();
+
 var app = {
   name:'facebook_friends',
-  port:8123,
   version:0.1,
-  openPolls:[],
+  environment:{
+    port:8123,
+    hostname:'localhost'
+  },
   option_settings:[
     {
       short       : 'p',
@@ -34,6 +39,7 @@ var app = {
       value       : true
     }
   ],
+  openPolls:[],
   sessions:new SessionManager(),
   router:new Router(),
   facebook:{
@@ -42,13 +48,16 @@ var app = {
 }
 
 app.initialize = function(){
+  logging.info('app.initialize: '+app.environment.hostname+":"+app.environment.port);
   opts.parse(app.option_settings);
-  this.router.listen(app.port);
+  this.router.listen(app.environment.port,app.environment.hostname);
   this.setup_routes();
 }
 
 app.setup_routes = function(){
+  logging.info('app.setup_routes');
   this.router.bind(app.session);
+  this.router.get('/favicon.ico').bind(app.favicon);
   this.router.get('/').bind(app.home);
   this.router.get('/user').bind(app.user);
   this.router.get(/\/user\/graph[\/$A-z]/).bind(app.graphData);
@@ -61,6 +70,7 @@ app.setup_routes = function(){
 }
 
 app.session = function(req,res,next){
+  logging.info('app.session');
   if(req.headers.cookie){
     req.session_id = req.headers.cookie;
   }
@@ -69,11 +79,17 @@ app.session = function(req,res,next){
   next();
 }
 
+app.favicon = function(){
+  
+}
+
 app.home = function(req,res,next){
+  logging.info('app.home');
   app.getHTML('index.html',req,res,next);
 }
 
 app.graphData = function(req,res,next){
+  logging.info('app.graphData');
   var _uri;
   if(req.session.user && req.session.user.authenticated){
     req.session.user.events.on('graphDataAvailable',function(d){
@@ -94,6 +110,7 @@ app.graphData = function(req,res,next){
 }
 
 app.user = function(req,res,next){
+  logging.info('app.user');
   if(req.session.user){
     if(req.session.user.getAccessToken()){
       res.writeHead(200,{'Content-Type':'application/json'});
@@ -112,11 +129,13 @@ app.user = function(req,res,next){
 }
 
 app.unhandledRequest = function(req,res,next){
+  logging.info('app.unhandledRequest: '+sys.inspect(req.url));
   res.writeHead(404,{'Content-Type':'application/json'});
   res.end(JSON.stringify({'message':'Resource Not Found'}));
 }
 
 app.getHTML = function(uri,req,res,next){
+  logging.info('app.getHTML');
   var filename = path.join(process.cwd()+'/webroot/', uri);  
   path.exists(filename, function(exists) {  
     if(!exists) {

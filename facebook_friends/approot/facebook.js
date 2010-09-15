@@ -2,7 +2,9 @@ var http = require('http'),
   sys = require('sys'),
   events = require('events'),
   url = require('url'),
-  utils = require('./libs/utils');
+  utils = require('./libs/tc/utils');
+  Logging = require('./libs/tc/logging');
+var logging = new Logging();
 
 var FBInterface = function(app_id,app_secret){
   var _me, conf;
@@ -50,6 +52,7 @@ var FBUser = function(conf){
     credentials.access_token = new_access_token;
   }
   this.fetchAccessToken = function(){
+    logging.info('this.fetchAccessToken');
     var facebook = http.createClient(80, 'graph.facebook.com');
     var request = facebook.request('GET', '/oauth/access_token?'+
       'client_id='+conf.app_id+'&'+
@@ -64,7 +67,11 @@ var FBUser = function(conf){
         _body += chunk;
       });
       response.on('end', function () {
-        credentials.access_token = _body.substring(_body.indexOf('=')+1,_body.indexOf('&'));
+        if(_body.indexOf('&') != -1){
+          credentials.access_token = _body.substring(_body.indexOf('=')+1,_body.indexOf('&'));
+        } else {
+          credentials.access_token = _body.substring(_body.indexOf('=')+1,_body.length);
+        }
         _me.authenticated = true;
         _me.events.emit('accessTokenFetched');
       });
@@ -72,6 +79,7 @@ var FBUser = function(conf){
   }
   
   this.fetchGraphData = function(uri){
+    logging.info('this.fetchGraphData');
     var facebook = http.createClient(443, 'graph.facebook.com', true);
     var request = facebook.request('GET', uri+
     '?access_token='+credentials.access_token,
