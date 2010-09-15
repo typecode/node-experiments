@@ -49,7 +49,7 @@ var app = {
 app.initialize = function(){
   logging.info('app.initialize: '+environment.hostname+":"+environment.port);
   opts.parse(app.option_settings);
-  this.router.listen(environment.port,environment.hostname);
+  this.router.listen(environment.port);
   this.setup_routes();
 }
 
