@@ -16,7 +16,8 @@ var FBInterface = function(app_id,app_secret){
   this.getLoginUrl = function(){
     return 'https://graph.facebook.com/oauth/authorize?'+
       'client_id='+conf.app_id+
-      '&redirect_uri=http://localhost:8123/fb_redirect';
+      '&redirect_uri=http://localhost:8123/fb_redirect'+
+      '&scope=offline_access';
   }
   
   this.authenticate = function(req,res,next){

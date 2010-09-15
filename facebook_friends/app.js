@@ -48,13 +48,13 @@ app.initialize = function(){
 }
 
 app.setup_routes = function(){
-  this.router.bind(app.session)
+  this.router.bind(app.session);
   this.router.get('/').bind(app.home);
   this.router.get('/user').bind(app.user);
   this.router.get(/\/user\/graph[\/$A-z]/).bind(app.graphData);
   this.router.get(/fb_redirect/)
     .bind(app.facebook.interface.authenticate).bind(function(req,res,next){
-      res.writeHead(303,{'Location':'/'});
+      res.writeHead(303,{'Location':'/','Set-Cookie':req.session_id});
       res.end("");
     });
   this.router.bind(app.unhandledRequest);
@@ -101,7 +101,7 @@ app.user = function(req,res,next){
     } else {
       req.session.user.fetchAccessToken();
       req.session.user.events.on('accessTokenFetched',function(){
-        res.writeHead(200,{'Content-Type':'application/json','Set-Cookie':req.session_id});
+        res.writeHead(200,{'Content-Type':'application/json'});
         res.end(JSON.stringify({user:req.session.user}));
       });
     }
