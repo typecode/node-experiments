@@ -6,26 +6,21 @@ var http = require('http'),
   Logging = require('./libs/tc/logging');
 var logging = new Logging();
 
-var FBInterface = function(app_id,app_secret){
-  var _me, conf;
+var FBInterface = function(environment){
+  var _me;
   _me = this;
-  
-  conf = {
-    app_id:app_id,
-    app_secret:app_secret
-  }
   
   this.getLoginUrl = function(){
     return 'https://graph.facebook.com/oauth/authorize?'+
-      'client_id='+conf.app_id+
-      '&redirect_uri=http://localhost:8123/fb_redirect'+
+      'client_id='+environment.facebook.app_id+
+      '&redirect_uri=http://'+environment.hostname+':'+environment.port+'/fb_redirect'+
       '&scope=offline_access';
   }
   
   this.authenticate = function(req,res,next){
     var _code;
     if(!req.session.user){
-      req.session.user = new FBUser(conf);
+      req.session.user = new FBUser(environment);
     }
     if(_code = url.parse(req.url,true).query.code){
       req.session.user.setCode(_code);
@@ -35,10 +30,9 @@ var FBInterface = function(app_id,app_secret){
   
 };
 
-var FBUser = function(conf){
-  var _me, conf, _graph, credentials, access_token, code;
+var FBUser = function(environment){
+  var _me, _graph, credentials, access_token, code;
   _me = this;
-  conf = conf;
   credentials = {};
   _graph = {};
   
@@ -55,9 +49,9 @@ var FBUser = function(conf){
     logging.info('this.fetchAccessToken');
     var facebook = http.createClient(80, 'graph.facebook.com');
     var request = facebook.request('GET', '/oauth/access_token?'+
-      'client_id='+conf.app_id+'&'+
-      'redirect_uri=http://localhost:8123/fb_redirect&'+
-      'client_secret='+conf.app_secret+'&'+
+      'client_id='+environment.facebook.app_id+'&'+
+      'redirect_uri=http://'+environment.hostname+':'+environment.port+'/fb_redirect&'+
+      'client_secret='+environment.facebook.app_secret+'&'+
       'code='+credentials.code,
       {'host': 'graph.facebook.com'});
     request.end();

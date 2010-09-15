@@ -18,20 +18,19 @@ var http = require('http'),
 
 var logging = new Logging();
 
+var environment = {
+  port:8123,
+  hostname:'localhost',
+  facebook:{
+    app_id:'161098813904458',
+    app_secret:'372c7cbc6562ff2729e2c5cca5f5a3ff'
+  }
+}
+
 var app = {
   name:'facebook_friends',
   version:0.1,
-  environment:{
-    port:8123,
-    hostname:null
-  },
   option_settings:[
-    {
-      short       : 'p',
-      long        : 'port',
-      description : 'Sets the port to use. NOT IMPLEMENTED',
-      value       : true
-    },
     {
       short       : 'v',
       long        : 'verbose',
@@ -43,14 +42,14 @@ var app = {
   sessions:new SessionManager(),
   router:new Router(),
   facebook:{
-    interface:new FBInterface('161098813904458','372c7cbc6562ff2729e2c5cca5f5a3ff')
+    interface:new FBInterface(environment)
   }
 }
 
 app.initialize = function(){
-  logging.info('app.initialize: '+app.environment.hostname+":"+app.environment.port);
+  logging.info('app.initialize: '+environment.hostname+":"+environment.port);
   opts.parse(app.option_settings);
-  this.router.listen(app.environment.port,app.environment.hostname);
+  this.router.listen(environment.port,environment.hostname);
   this.setup_routes();
 }
 
