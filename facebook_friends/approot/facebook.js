@@ -80,16 +80,16 @@ var FBUser = function(conf){
   
   this.fetchGraphData = function(uri){
     logging.info('this.fetchGraphData');
-    var facebook = http.createClient(443, 'graph.facebook.com', true);
-    var request = facebook.request('GET', uri+
-    '?access_token='+credentials.access_token,
-      {'host': 'graph.facebook.com'});
+    var myuri, facebook, request;
+    myuri = ""+uri;
+    if(myuri.indexOf("?") == -1){ myuri += "?"; };
+    myuri += '&access_token='+credentials.access_token;
+    facebook = http.createClient(443, 'graph.facebook.com', true);
+    request = facebook.request('GET', myuri, {'host': 'graph.facebook.com'});
     request.end();
     request.on('response', function (response) {
       var _body = "";
-      response.on('data', function (chunk) {
-        _body += chunk;
-      });
+      response.on('data', function (chunk) { _body += chunk; });
       response.on('end', function () {
         try{
           _graph[uri] = JSON.parse(_body);

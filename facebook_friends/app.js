@@ -23,7 +23,7 @@ var app = {
   version:0.1,
   environment:{
     port:8123,
-    hostname:'localhost'
+    hostname:null
   },
   option_settings:[
     {
