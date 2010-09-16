@@ -74,6 +74,8 @@ app.session = function(req,res,next){
   logging.info('app.session');
   if(req.headers.cookie){
     req.session_id = req.headers.cookie;
+  } else {
+    logging.dump(req.headers);
   }
   if(!req.session_id){ req.session_id = utils.randomStr(12); }
   req.session = app.sessions.getSession(req.session_id);
