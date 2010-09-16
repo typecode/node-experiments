@@ -13,8 +13,8 @@ var FBInterface = function(environment){
   this.getLoginUrl = function(){
     return 'https://graph.facebook.com/oauth/authorize?'+
       'client_id='+environment.facebook.app_id+
-      '&redirect_uri=http://'+environment.hostname+':'+environment.port+'/fb_redirect'+
-      '&scope=offline_access';
+      '&redirect_uri=http://'+environment.hostname+':'+environment.port+'/fb_redirect';
+      //'&scope=offline_access';
   }
   
   this.authenticate = function(req,res,next){
