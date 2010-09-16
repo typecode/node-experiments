@@ -59,12 +59,14 @@ app.setup_routes = function(){
   this.router.get('/favicon.ico').bind(app.favicon);
   this.router.get('/').bind(app.home);
   this.router.get('/user').bind(app.user);
-  this.router.get(/\/user\/graph[\/$A-z]/).bind(app.graphData);
+  
   this.router.get(/fb_redirect/)
     .bind(app.facebook.interface.authenticate).bind(function(req,res,next){
       res.writeHead(303,{'Location':'/','Set-Cookie':req.session_id});
       res.end("");
     });
+  this.router.get(/\/user\/graph[\/$A-z]/).bind(app.graphData);
+  this.router.get(/\/user\/friends/).bind(app.userFriends);
   this.router.bind(app.unhandledRequest);
 }
 
@@ -125,6 +127,25 @@ app.user = function(req,res,next){
     res.writeHead(200,{'Content-Type':'application/json'});
     res.end(JSON.stringify({redirect:app.facebook.interface.getLoginUrl()}));
   }
+}
+
+app.userFriends = function(req,res,next){
+  logging.info('app.userFriends');
+  req.session.user.events.on('graphDataNotAvailable',function(d){
+    logging.dump(d);
+    res.writeHead(500,{'Content-Type':'application/json'});
+    res.end(JSON.stringify({message:'Data not avalable.',uri:d.uri}));
+  });
+  
+  req.session.user.events.on('graphDataAvailable',function(d){
+    res.writeHead(200,{'Content-Type':'application/json'});
+    d.data.data.forEach(function(i){
+      req.session.user.fetchGraphData('/me/friends');
+      logging.dump(i);
+    })
+  });
+  
+  req.session.user.fetchGraphData('/me/friends');
 }
 
 app.unhandledRequest = function(req,res,next){

@@ -4,12 +4,15 @@
     <title>Facebook Friends</title>
     
     <style type="text/css" media="screen">
+      * { margin:0px;padding:0px;line-height:0px;  }
+      body{ overflow-y:scroll;text-align:center;background-color:#060606; }
+      img { width:50px;color:transparent;; }
       #fb_content { width:100%; height:100%; }
     </style>
   </head>
   
   <body>
-    <pre id='fb_content'></pre>
+    <div id='fb_content'></div>
 
     <script type="text/javascript" charset="utf-8" src="http://yui.yahooapis.com/3.1.2/build/yui/yui-min.js"></script>
     <script type="text/javascript" charset="utf-8">
@@ -19,15 +22,25 @@
         name:'facebook_friends',
         version:0.1,
         openPolls:{},
+        events:{},
         user:null
       }
       
       app.initialize = function(Y){
+        console.log('app.initialize');
         app.YUI = Y;
+        app.setupevents();
         app.getuser();
       }
       
+      app.setupevents = function(){
+        console.log('app.setupevents');
+        app.YUI.augment(app.events,app.YUI.EventTarget);
+        app.events.on('app:graphdatareceived',app.graphDataReceived);
+      }
+      
       app.getuser = function(){
+        console.log('app.getuser');
         app.YUI.io('/user',
           {on:{
             success:function(transactionId, response, arguments){
@@ -48,6 +61,7 @@
       }
       
       app.getgraphdata = function(uri){
+        console.log('app.getgraphdata');
         if(!uri){
           return;
         }
@@ -56,7 +70,7 @@
             success:function(transactionId, response, arguments){
               try{
                 var _json = app.YUI.JSON.parse(response.responseText);
-                app.YUI.one('#fb_content').append(app.YUI.JSON.stringify(_json,null,'&nbsp'));
+                app.events.fire('app:graphdatareceived',_json)
               }catch(error){
                 console.log(error);
               }
@@ -65,7 +79,34 @@
         );
       }
       
-      YUI().use('io','json','node',function(Y){
+      app.graphDataReceived = function(json){
+        console.log('app.graphDataReceived');
+        switch(json.uri){
+          case '/me/friends':
+            app.renderuserfriends(json);
+            break;
+        }
+      }
+      
+      app.renderuserfriends = function(json){
+        console.log('app.renderuserfriends');
+        var imgbuffer, renderinterval;
+        imgbuffer = [];
+        json.data.data.forEach(function(i){
+          var imgpath, imgalt;
+          imgpath = "http://graph.facebook.com/"+i.id+"/picture?type=square";
+          imgalt = i.name;
+          imgbuffer.push("<img alt='"+imgalt+"' src='"+imgpath+"'></img>");
+        });
+        renderinterval = setInterval(function(){
+          if(!imgbuffer.length){ clearInterval(renderinterval); return; }
+          app.YUI.one("#fb_content")
+            .append(imgbuffer.shift());
+        }, 50);
+        
+      }
+      
+      YUI().use('io','json','node','event-custom',function(Y){
         app.initialize(Y);
       });
 
