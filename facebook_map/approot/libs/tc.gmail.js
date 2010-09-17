@@ -1,7 +1,7 @@
 var http = require('http'),
-  sys = require('sys'),
-  events = require('events'),
-  base64 = require('./libs/base64');
+    sys = require('sys'),
+    events = require('events'),
+    base64 = require('./base64');
 
 
 exports.fetcher = function(){

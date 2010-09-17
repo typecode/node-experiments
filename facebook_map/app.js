@@ -1,28 +1,39 @@
 require.paths.unshift(__dirname);
 
+
+    // Node.JS LIBS-------------------------------------------------------------
 var http = require('http'),
     sys = require('sys'),
     url = require('url'),
     path = require('path'),
     fs = require('fs'),
+    
+    // 3rd PARTY LIBS-----------------------------------------------------------
     opts = require('./approot/libs/opts'),
     Router = require('./approot/libs/biggie-router'),
-    SessionManager = require('./approot/libs/tc/sessionManager'),
-    Logging = require('./approot/libs/tc/logging'),
-    string = require('./approot/libs/string'),
     sax = require('./approot/libs/sax'),
     xml = require('./approot/libs/xml2js'),
-    utils = require('./approot/libs/tc/utils'),
-    gmail = require('./approot/gmail'),
-    FBInterface = require('./approot/facebook').FBInterface,
-    FBUser = require('./approot/facebook').FBUser;
+    
+    // TC LIBS------------------------------------------------------------------
+    SessionManager = require('./approot/libs/tc.sessionManager'),
+    Logging = require('./approot/libs/tc.logging'),
+    utils = require('./approot/libs/tc.utils'),
+    gmail = require('./approot/libs/tc.gmail'),
+    facebook = require('./approot/libs/tc.facebook'),
+    
+    // CONTROLLERS--------------------------------------------------------------
+    Controller = require('./approot/controllers/Controller');
+    User = require('./approot/controllers/User');
+
+/*::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
 
 var logging = new Logging();
 
 var environment;
-try{
+
+try {
   environment = require('../env.js');
-}catch(err){
+} catch(err){
   logging.info('Cannot load ../env.js. Using Default environment.');
   environment = {
     port:8123,
@@ -30,12 +41,15 @@ try{
     facebook:{
       app_id:'',
       app_secret:''
+    },
+    cloudmade:{
+      api_key:''
     }
   }
 }
 
 var app = {
-  name:'facebook_friends',
+  name:'facebook_map',
   version:0.1,
   option_settings:[
     {
@@ -45,10 +59,17 @@ var app = {
       value       : true
     }
   ],
+  user:{},
   openPolls:[],
+  controllers:{
+    Controller:new Controller(environment),
+    User:new User(environment)
+  },
   sessions:new SessionManager(),
   router:new Router()
 }
+
+/*::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
 
 app.initialize = function(){
   logging.info('app.initialize: '+environment.hostname+":"+environment.port);
@@ -61,95 +82,36 @@ app.setup_routes = function(){
   logging.info('app.setup_routes');
   this.router.bind(app.session);
   this.router.get('/').bind(app.home);
-  this.router.get('/user').bind(app.user);
-  this.router.get(/fb_redirect/)
-    .bind(app.authenticate).bind(app.getUserDetails);
-  this.router.get(/\/user\/graph[\/$A-z]/).bind(app.graphData);
+  this.router.get('/user').bind(app.controllers.User.user);
+  this.router.get('/user/login').bind(app.controllers.User.login);
+  this.router.get('/user/freinds').bind(app.controllers.User.freinds);
+  this.router.get(/fb_redirect/).bind(app.controllers.User.authenticate);
+  this.router.get(/\/user\/graph[\/$A-z]/).bind(app.controllers.User.graphData);
   this.router.bind(app.staticFile);
   this.router.bind(app.unhandledRequest);
 }
 
 app.session = function(req,res,next){
-  logging.info('app.session');
+  //logging.info('app.session');
   if(req.headers.cookie){
-    req.session_id = req.headers.cookie;
+    req.session_id = (function(cookie){
+      var nameEQ = "tcsession=";
+      var ca = cookie.split(';');
+      for(var i=0;i < ca.length;i++) {
+        var c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+      }
+      return null;
+    })(req.headers.cookie);
   }
-  if(!req.session_id){ req.session_id = utils.randomStr(32); }
-  req.session = app.sessions.getSession(req.session_id);
-  next();
+  app.sessions.getSession(req,res,next);
 }
 
 app.home = function(req,res,next){
   logging.info('app.home');
   req.url = '/index.html';
   next();
-}
-
-app.user = function(req,res,next){
-  logging.info('app.user');
-  if(req.session.user){
-    if(req.session.user.getAccessToken()){
-      res.writeHead(200,{'Content-Type':'application/json'});
-      res.end(JSON.stringify({user:req.session.user}));
-    } else {
-      req.session.user.fetchAccessToken();
-      req.session.user.events.on('accessTokenFetched',function(){
-        res.writeHead(200,{'Content-Type':'application/json'});
-        res.end(JSON.stringify({user:req.session.user}));
-      });
-    }
-  } else {
-    res.writeHead(200,{'Content-Type':'application/json'});
-    res.end(JSON.stringify({redirect:FBUser.getLoginUrl(environment)}));
-  }
-}
-
-app.authenticate = function(req,res,next){
-  if(!req.session.user){
-    req.session.user = new FBUser(environment);
-  }
-  req.session.user.authenticate(req,res,next);
-}
-
-app.getUserDetails = function(req,res,next){
-  logging.info('app.getUserDetails');
-  if(req.session.user && req.session.user.authenticated){
-    (function(){
-      var fbi;
-      fbi = new FBInterface(req.session.user,environment);
-      fbi.events.on('graphDataAvailable',function(d){
-          req.session.user.data[d.uri] = d.data
-          res.writeHead(303,{'Location':'/','Set-Cookie':req.session_id});
-          res.end("");
-      });
-      fbi.events.on('graphDataNotAvailable',function(d){
-          res.writeHead(500,{'Content-Type':'application/json'});
-          res.end(JSON.stringify({message:'Could not instantiate User.',status:500}));
-      });
-      fbi.fetchGraphData('/me');
-    })(req,res,next);
-  } else {
-    app.authenticate(req,res,next);
-  }
-}
-
-app.graphData = function(req,res,next){
-  logging.info('app.graphData');
-  if(req.session.user && req.session.user.authenticated){
-    (function(){
-      var fbi;
-      fbi = new FBInterface(req.session.user,environment);
-      fbi.events.on('graphDataAvailable',function(d){
-        res.writeHead(200,{'Content-Type':'application/json'});
-        res.end(JSON.stringify(d));
-      });
-      fbi.events.on('graphDataNotAvailable',function(d){
-        res.writeHead(500,{'Content-Type':'application/json'});
-        res.end(JSON.stringify({message:'Data not available.',status:500}));
-      });
-      fbi.fetchGraphData(req.url.replace('/user/graph',''));
-    })(req,res,next);
-  }
 }
 
 app.staticFile = function(req,res,next){
@@ -166,10 +128,10 @@ app.staticFile = function(req,res,next){
         res.end(JSON.stringify({'message':err, 'status':500}));
         return;
       }
-      res.writeHead(200);  
-      res.write(file, "binary");  
+      res.writeHead(200);
+      res.write(file, "binary");
       res.end();
-    });  
+    });
   });
 }
 
@@ -179,4 +141,8 @@ app.unhandledRequest = function(req,res,next){
   res.end(JSON.stringify({'message':'Resource Not Found', 'status':404}));
 }
 
+/*::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
+
 app.initialize();
+
+/*::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
