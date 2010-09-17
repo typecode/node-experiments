@@ -15,16 +15,23 @@ var http = require('http'),
     utils = require('./approot/libs/tc/utils'),
     gmail = require('./approot/gmail'),
     FBInterface = require('./approot/facebook').FBInterface,
-    FBUser = require('./approot/facebook').FBUser;
+    FBUser = require('./approot/facebook').FBUser,
+    env = require('../env');
 
 var logging = new Logging();
 
-var environment = {
-  port:8123,
-  hostname:'localhost',
-  facebook:{
-    app_id:'',
-    app_secret:''
+var environment;
+try{
+  environment = require('../env.js');
+}catch(err){
+  logging.info('Cannot load ../env.js. Using Default environment.');
+  environment = {
+    port:8123,
+    hostname:'localhost',
+    facebook:{
+      app_id:'',
+      app_secret:''
+    }
   }
 }
 
