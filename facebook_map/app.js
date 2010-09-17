@@ -28,7 +28,7 @@ var environment = {
 }
 
 var app = {
-  name:'facebook_friends',
+  name:'facebook_map',
   version:0.1,
   option_settings:[
     {
