@@ -14,7 +14,8 @@ var http = require('http'),
     xml = require('./approot/libs/xml2js'),
     utils = require('./approot/libs/tc/utils'),
     gmail = require('./approot/gmail'),
-    FBInterface = require('./approot/facebook');
+    FBInterface = require('./approot/facebook').FBInterface,
+    FBUser = require('./approot/facebook').FBUser;
 
 var logging = new Logging();
 
@@ -28,7 +29,7 @@ var environment = {
 }
 
 var app = {
-  name:'facebook_map',
+  name:'facebook_friends',
   version:0.1,
   option_settings:[
     {
@@ -40,10 +41,7 @@ var app = {
   ],
   openPolls:[],
   sessions:new SessionManager(),
-  router:new Router(),
-  facebook:{
-    interface:new FBInterface(environment)
-  }
+  router:new Router()
 }
 
 app.initialize = function(){
@@ -56,17 +54,12 @@ app.initialize = function(){
 app.setup_routes = function(){
   logging.info('app.setup_routes');
   this.router.bind(app.session);
-  this.router.get('/favicon.ico').bind(app.favicon);
   this.router.get('/').bind(app.home);
   this.router.get('/user').bind(app.user);
-  
   this.router.get(/fb_redirect/)
-    .bind(app.facebook.interface.authenticate).bind(function(req,res,next){
-      res.writeHead(303,{'Location':'/','Set-Cookie':req.session_id});
-      res.end("");
-    });
+    .bind(app.authenticate).bind(app.getUserDetails);
   this.router.get(/\/user\/graph[\/$A-z]/).bind(app.graphData);
-  this.router.get(/\/user\/friends/).bind(app.userFriends);
+  this.router.bind(app.staticFile);
   this.router.bind(app.unhandledRequest);
 }
 
@@ -74,42 +67,16 @@ app.session = function(req,res,next){
   logging.info('app.session');
   if(req.headers.cookie){
     req.session_id = req.headers.cookie;
-  } else {
-    logging.dump(req.headers);
   }
-  if(!req.session_id){ req.session_id = utils.randomStr(12); }
+  if(!req.session_id){ req.session_id = utils.randomStr(32); }
   req.session = app.sessions.getSession(req.session_id);
   next();
 }
 
-app.favicon = function(){
-  
-}
-
 app.home = function(req,res,next){
   logging.info('app.home');
-  app.getHTML('index.html',req,res,next);
-}
-
-app.graphData = function(req,res,next){
-  logging.info('app.graphData');
-  var _uri;
-  if(req.session.user && req.session.user.authenticated){
-    req.session.user.events.on('graphDataAvailable',function(d){
-      if(d.uri == _uri){
-        res.writeHead(200,{'Content-Type':'application/json'});
-        res.end(JSON.stringify(d));
-      }
-    });
-    req.session.user.events.on('graphDataNotAvailable',function(d){
-      if(d.uri == _uri){
-        res.writeHead(500,{'Content-Type':'application/json'});
-        res.end(JSON.stringify({message:'Data not avalable.',uri:_uri}));
-      }
-    });
-    _uri = req.url.replace('/user/graph','');
-    req.session.user.fetchGraphData(_uri);
-  }
+  req.url = '/index.html';
+  next();
 }
 
 app.user = function(req,res,next){
@@ -127,59 +94,83 @@ app.user = function(req,res,next){
     }
   } else {
     res.writeHead(200,{'Content-Type':'application/json'});
-    res.end(JSON.stringify({redirect:app.facebook.interface.getLoginUrl()}));
+    res.end(JSON.stringify({redirect:FBUser.getLoginUrl(environment)}));
   }
 }
 
-app.userFriends = function(req,res,next){
-  logging.info('app.userFriends');
-  req.session.user.events.on('graphDataNotAvailable',function(d){
-    logging.dump(d);
-    res.writeHead(500,{'Content-Type':'application/json'});
-    res.end(JSON.stringify({message:'Data not avalable.',uri:d.uri}));
+app.authenticate = function(req,res,next){
+  if(!req.session.user){
+    req.session.user = new FBUser(environment);
+  }
+  req.session.user.authenticate(req,res,next);
+}
+
+app.getUserDetails = function(req,res,next){
+  logging.info('app.getUserDetails');
+  if(req.session.user && req.session.user.authenticated){
+    (function(){
+      var fbi;
+      fbi = new FBInterface(req.session.user,environment);
+      fbi.events.on('graphDataAvailable',function(d){
+          req.session.user.data[d.uri] = d.data
+          res.writeHead(303,{'Location':'/','Set-Cookie':req.session_id});
+          res.end("");
+      });
+      fbi.events.on('graphDataNotAvailable',function(d){
+          res.writeHead(500,{'Content-Type':'application/json'});
+          res.end(JSON.stringify({message:'Could not instantiate User.',status:500}));
+      });
+      fbi.fetchGraphData('/me');
+    })(req,res,next);
+  } else {
+    app.authenticate(req,res,next);
+  }
+}
+
+app.graphData = function(req,res,next){
+  logging.info('app.graphData');
+  if(req.session.user && req.session.user.authenticated){
+    (function(){
+      var fbi;
+      fbi = new FBInterface(req.session.user,environment);
+      fbi.events.on('graphDataAvailable',function(d){
+        res.writeHead(200,{'Content-Type':'application/json'});
+        res.end(JSON.stringify(d));
+      });
+      fbi.events.on('graphDataNotAvailable',function(d){
+        res.writeHead(500,{'Content-Type':'application/json'});
+        res.end(JSON.stringify({message:'Data not available.',status:500}));
+      });
+      fbi.fetchGraphData(req.url.replace('/user/graph',''));
+    })(req,res,next);
+  }
+}
+
+app.staticFile = function(req,res,next){
+  logging.info('app.staticFile: '+sys.inspect(req.url));
+  var filename = path.join(process.cwd()+'/webroot/', req.url);
+  path.exists(filename, function(exists) {  
+    if(!exists) {
+        next();
+        return;
+    }
+    fs.readFile(filename, "binary", function(err, file) {  
+      if(err) {  
+        res.writeHead(500, {"Content-Type": "application/json"});
+        res.end(JSON.stringify({'message':err, 'status':500}));
+        return;
+      }
+      res.writeHead(200);  
+      res.write(file, "binary");  
+      res.end();
+    });  
   });
-  
-  req.session.user.events.on('graphDataAvailable',function(d){
-    res.writeHead(200,{'Content-Type':'application/json'});
-    d.data.data.forEach(function(i){
-      req.session.user.fetchGraphData('/me/friends');
-      logging.dump(i);
-    })
-  });
-  
-  req.session.user.fetchGraphData('/me/friends');
 }
 
 app.unhandledRequest = function(req,res,next){
   logging.info('app.unhandledRequest: '+sys.inspect(req.url));
   res.writeHead(404,{'Content-Type':'application/json'});
-  res.end(JSON.stringify({'message':'Resource Not Found'}));
-}
-
-app.getHTML = function(uri,req,res,next){
-  logging.info('app.getHTML');
-  var filename = path.join(process.cwd()+'/webroot/', uri);  
-  path.exists(filename, function(exists) {  
-    if(!exists) {
-        res.writeHead(404, {"Content-Type": "text/plain"});  
-        res.write("404 Not Found\n");  
-        res.end();  
-        return;  
-    }
-      
-    fs.readFile(filename, "binary", function(err, file) {  
-      if(err) {  
-        res.writeHead(500, {"Content-Type": "text/plain"});  
-        res.write(err + "\n");  
-        res.end();  
-        return;  
-      }  
-
-      res.writeHead(200);  
-      res.write(file, "binary");  
-      res.end();  
-    });  
-  });
+  res.end(JSON.stringify({'message':'Resource Not Found', 'status':404}));
 }
 
 app.initialize();
