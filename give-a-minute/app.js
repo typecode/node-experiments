@@ -7,12 +7,14 @@ var http = require('http'),
     url = require('url'),
     path = require('path'),
     fs = require('fs'),
+    events = require('events'),
     
     // 3rd PARTY LIBS-----------------------------------------------------------
     opts = require('./approot/libs/opts'),
-    Router = require('./approot/libs/biggie-router'),
+    Router = require('../libs/biggie-router/lib/biggie-router'),
+    mongoose = require('../libs/mongoose/mongoose').Mongoose,
     sax = require('./approot/libs/sax'),
-    xml = require('./approot/libs/xml2js'),
+    xml = require('../libs/xml2js/lib'),
     
     // TC LIBS------------------------------------------------------------------
     SessionManager = require('./approot/libs/tc.sessionManager'),
@@ -21,9 +23,14 @@ var http = require('http'),
     gmail = require('./approot/libs/tc.gmail'),
     facebook = require('./approot/libs/tc.facebook'),
     
+    // MODELS--------------------------------------------------------------
+    question = require('./approot/models/question'),
+    answer = require('./approot/models/answer'),
+    
     // CONTROLLERS--------------------------------------------------------------
-    Controller = require('./approot/controllers/Controller');
-    User = require('./approot/controllers/User');
+    Controller = require('./approot/controllers/Controller'),
+    User = require('./approot/controllers/User'),
+    Question = require('./approot/controllers/Question');
 
 /*::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
 
@@ -49,7 +56,7 @@ try {
 }
 
 var app = {
-  name:'facebook_map',
+  name:'give-a-minute',
   version:0.1,
   option_settings:[
     {
@@ -63,8 +70,11 @@ var app = {
   openPolls:[],
   controllers:{
     Controller:new Controller(environment),
-    User:new User(environment)
+    User:new User(environment),
+    Question:new Question(environment)
   },
+  events:new events.EventEmitter(),
+  db:mongoose.connect('mongodb://localhost/db'),
   sessions:new SessionManager(),
   router:new Router()
 }
@@ -82,11 +92,13 @@ app.setup_routes = function(){
   logging.info('app.setup_routes');
   this.router.bind(app.session);
   this.router.get('/').bind(app.home);
-  this.router.get('/user').bind(app.controllers.User.user);
-  this.router.get('/user/login').bind(app.controllers.User.login);
-  this.router.get('/user/freinds').bind(app.controllers.User.freinds);
-  this.router.get(/fb_redirect/).bind(app.controllers.User.authenticate);
-  this.router.get(/\/user\/graph[\/$A-z]/).bind(app.controllers.User.graphData);
+  this.router.get('/question/create').bind(app.controllers.Question.create);
+  this.router.post('/question/answer').bind(app.controllers.Question.answer);
+  this.router.get(/\/question\/[a-zA-Z0-9]*\/answers\/new/)
+    .bind(app.controllers.Question.answerspoll);
+  this.router.get(/\/question\/[a-zA-Z0-9]*\/answers/)
+    .bind(app.controllers.Question.answers);
+  this.router.get('/question/all').bind(app.controllers.Question.all);
   this.router.bind(app.staticFile);
   this.router.bind(app.unhandledRequest);
 }
@@ -106,6 +118,11 @@ app.session = function(req,res,next){
     })(req.headers.cookie);
   }
   app.sessions.getSession(req,res,next);
+}
+
+app.questions = function(req,res,next){
+  logging.info('app.questions');
+  app.controllers.Question.all.call(app,req,res,next);
 }
 
 app.home = function(req,res,next){
@@ -143,6 +160,7 @@ app.unhandledRequest = function(req,res,next){
 
 /*::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
 
+global.app = app;
 app.initialize();
 
 /*::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/

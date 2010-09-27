@@ -8,9 +8,9 @@ var User = function(environment){
   
   this.user = function(req,res,next){
     logging.info('User.user');
-    res.writeHead(200,{'Content-Type':'application/json'});
-    res.end(JSON.stringify(
-      {'user':req.session.data.user,'session_id':req.session.session_id}));
+    this.json(req,res,next,
+      {'user':req.session.data.user,'session_id':req.session.session_id});
+    
   }
 
   this.login = function(req,res,next){
@@ -49,20 +49,6 @@ var User = function(environment){
       .freindsFetcher.events.on('freindAvailable',freindAvailable)
   }
 
-  this.graphData = function(req,res,next){
-    logging.info('User.graphData');
-    var fbi;
-    fbi = new facebook.Interface(req.session.data.user,environment);
-    fbi.events.on('graphDataAvailable',function(d){
-      res.writeHead(200,{'Content-Type':'application/json'});
-      res.end(JSON.stringify(d));
-    });
-    fbi.events.on('graphDataNotAvailable',function(d){
-      res.writeHead(500,{'Content-Type':'application/json'});
-      res.end(JSON.stringify({message:'Data not available.',status:500}));
-    });
-    fbi.fetchGraphData(req.url.replace('/user/graph',''));
-  }
   
 }
 

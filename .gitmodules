@@ -1,0 +1,12 @@
+[submodule "give-a-minute/approot/libs/mongoose"]
+	path = give-a-minute/approot/libs/mongoose
+	url = git://github.com/LearnBoost/mongoose.git
+[submodule "libs/mongoose"]
+	path = libs/mongoose
+	url = git://github.com/LearnBoost/mongoose.git
+[submodule "libs/biggie-router"]
+	path = libs/biggie-router
+	url = http://github.com/biggie/biggie-router.git
+[submodule "libs/xml2js"]
+	path = libs/xml2js
+	url = http://github.com/maqr/node-xml2js.git
