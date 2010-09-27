@@ -1,3 +1,4 @@
+if(!tc){ tc = {}; }
 
 var environment = {
   cloudmade:{
@@ -7,6 +8,7 @@ var environment = {
 
 var app = {
     Y:null,
+    selector:'#app',
     name:'give-a-minute',
     version:0.1,
     openPolls:{},
@@ -20,10 +22,15 @@ var app = {
     app.Y = Y;
     app.Y.Node.one('title').setContent(app.name+" - "+app.version);
     app.setupevents();
-    app.question_panel = new question_panel(app);
-    app.question_panel.appendTo('#app');
-    app.response_panel = new response_panel(app);
-    app.response_panel.appendTo('#app');
+    app.user_manager = new tc.user_manager(app);
+    app.header = new tc.header(app);
+    app.modal = new tc.modal(app);
+    app.question_panel = new tc.question_panel(app);
+    app.response_panel = new tc.response_panel(app);
+    app.header.render(app.selector);
+    app.question_panel.render(app.selector);
+    app.response_panel.render(app.selector);
+    app.modal.render(app.selector);
   }
   
   app.setupevents = function(){

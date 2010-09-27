@@ -6,6 +6,9 @@ body{
 
 .clear{ clear:both; }
 
+#header{ width:100%;background-color:#ebebeb; text-align:right; }
+#header a { padding:5px; }
+
 #question_panel{ width:90%;margin:30px auto 0px auto;
   position:relative;background-color:#ebebeb;  }
   #question_select { width:80%; margin:10px 3% 10px 3%; float:right; }
