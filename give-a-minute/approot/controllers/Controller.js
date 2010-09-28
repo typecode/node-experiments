@@ -16,6 +16,11 @@ Controller.prototype.OK = function(req,res,next){
   res.end(JSON.stringify({status:'OK'}));
 }
 
+Controller.prototype.ERROR = function(req,res,next,json){
+  res.writeHead(500,{'Content-Type':'application/json'});
+  res.end(JSON.stringify(json));
+}
+
 if (module.exports) {
   module.exports = Controller;
 }

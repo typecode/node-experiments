@@ -12,6 +12,7 @@ var app = {
     name:'give-a-minute',
     version:0.1,
     openPolls:{},
+    salt:null,
     user:null,
     question_panel:null,
     response_panel:null
@@ -31,6 +32,8 @@ var app = {
     app.question_panel.render(app.selector);
     app.response_panel.render(app.selector);
     app.modal.render(app.selector);
+    
+    app.user_manager.fetch_user();
   }
   
   app.setupevents = function(){

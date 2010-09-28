@@ -10,3 +10,6 @@
 [submodule "libs/xml2js"]
 	path = libs/xml2js
 	url = http://github.com/maqr/node-xml2js.git
+[submodule "libs/multipart-js"]
+	path = libs/multipart-js
+	url = http://github.com/isaacs/multipart-js.git

@@ -16,6 +16,7 @@ if(!tc){ var tc = {}; }
  
    this.initialize = function(){
      console.log('question_panel.initialize');
+     app.Y.augment(_me, app.Y.EventTarget, null, null, {});
      _me.getquestions();
      app.on('question_panel:questionsloaded',_me.populate);
      return _me;

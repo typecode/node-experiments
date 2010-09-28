@@ -16,8 +16,11 @@
     padding:5px;
     border:2px solid #aa0000;
     background-color:#fff;
-    text-align:right;
+    overflow:hidden;
 }
+.yui3-widget-hd p { float:left; }
+.yui3-widget-hd a.close { float:right; }
+
  
 .yui3-overlay-content .yui3-widget-bd {
     padding:5px;

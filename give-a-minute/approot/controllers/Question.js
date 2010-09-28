@@ -38,7 +38,7 @@ var Question = function(){
   
   this.answer = function(req,res,next){
     logging.info('Question.answer');
-    var _reqbody, _json, _model, _answer;
+    var reqbody, _json, _model, _answer;
     reqbody = "";
     req.on('data',function(chunk){
       reqbody += chunk;
@@ -53,12 +53,12 @@ var Question = function(){
         _answer.save(function(){
           logging.info('Question.answer-->SAVED');
           global.app.events.emit('Question:answersaved',_answer);
+          _me.OK(req,res,next);
         });
       }catch(error){
         logging.info(error);
       }
-      _me.OK(req,res,next);
-    })
+    });
   }
   
   this.answers = function(req,res,next){

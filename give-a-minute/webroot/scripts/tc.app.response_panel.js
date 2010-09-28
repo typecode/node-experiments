@@ -17,6 +17,7 @@ if(!tc){ var tc = {}; }
  
    this.initialize = function(){
      console.log('response_panel.initialize');
+     app.Y.augment(_me, app.Y.EventTarget, null, null, {});
      app.on('question_panel:questionselected',_me.questionselectedHandler);
      app.on('response_panel:answersloaded',_me.answersloadedhandler);
      return _me;

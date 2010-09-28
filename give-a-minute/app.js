@@ -29,7 +29,8 @@ var http = require('http'),
     
     // CONTROLLERS--------------------------------------------------------------
     Controller = require('./approot/controllers/Controller'),
-    User = require('./approot/controllers/User'),
+    User = require('./approot/controllers/User').User,
+    //FBUser = require('./approot/controllers/User').FBUser,
     Question = require('./approot/controllers/Question');
 
 /*::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
@@ -51,7 +52,8 @@ try {
     },
     cloudmade:{
       api_key:''
-    }
+    },
+    salt:12345
   }
 }
 
@@ -71,6 +73,7 @@ var app = {
   controllers:{
     Controller:new Controller(environment),
     User:new User(environment),
+    //FBUser:new FBUser(environment),
     Question:new Question(environment)
   },
   events:new events.EventEmitter(),
@@ -92,6 +95,9 @@ app.setup_routes = function(){
   logging.info('app.setup_routes');
   this.router.bind(app.session);
   this.router.get('/').bind(app.home);
+  this.router.get('/user').bind(app.controllers.User.user);
+  this.router.post('/user/login').bind(app.controllers.User.login);
+  this.router.post('/user/register').bind(app.controllers.User.register);
   this.router.get('/question/create').bind(app.controllers.Question.create);
   this.router.post('/question/answer').bind(app.controllers.Question.answer);
   this.router.get(/\/question\/[a-zA-Z0-9]*\/answers\/new/)
